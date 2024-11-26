@@ -17,19 +17,22 @@ Currently in preparation phase:
 - [ ] Data gathering not started
 
 ## Repository Structure
-project/
-├── data/                 # Data storage (not tracked in git)
-│   ├── raw/             # Original satellite imagery
-│   └── processed/       # Processed data
-├── docs/                # Documentation
-│   ├── research/        # Research notes
-│   └── methods/         # Analysis methods
-├── src/                 # Source code
-│   ├── data_processing/ # Data processing scripts
-│   └── analysis/        # Analysis scripts
-└── results/             # Analysis outputs
-├── figures/         # Generated figures
-└── maps/            # Generated maps
+
+### /data (not tracked in git)
+- /raw - Original satellite imagery
+- /processed - Processed data
+
+### /docs
+- /research - Research notes
+- /methods - Analysis methods
+
+### /src
+- /data_processing - Data processing scripts
+- /analysis - Analysis scripts
+
+### /results
+- /figures - Generated figures
+- /maps - Generated maps
 
 ## Setup Instructions
 [To be added]
