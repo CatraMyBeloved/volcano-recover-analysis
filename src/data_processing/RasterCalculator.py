@@ -34,6 +34,7 @@ class RasterCalculator:
         resolution_selection = 'R' + resolution
         project_directory = Path(__file__).parents[2] / self.band_dir / tile / capture_date / resolution_selection
         jp2_files = list(project_directory.glob('*.jp2'))
+        print(jp2_files)
         selected_files = []
         for band in bands:
             band_files = [file for file in jp2_files if f'B{band}' in str(file)]
@@ -139,8 +140,38 @@ class RasterCalculator:
 
         return nbr
 
+    def temporal_comparison(self, tile, date1, date2, index = 'savi', save_file=False):
+        if index not in ['savi', 'ndvi', 'nbr']:
+            return None
+
+        if index == 'savi':
+            pre = self.calculate_savi(tile, date1, save_file = False)
+            post = self.calculate_savi(tile, date2, save_file = False)
+        elif index == 'nbr':
+            pre = self.calculate_nbr(tile, date1, save_file = False)
+            post = self.calculate_nbr(tile, date2, save_file = False)
+        elif index == 'ndvi':
+            pre = self.calculate_ndvi(tile, date1, save_file = False)
+            post = self.calculate_ndvi(tile, date2, save_file = False)
+
+        result = post - pre
+
+        if save_file:
+            original_file = self._selection(tile, date1, ['02'])
+            print(original_file)
+            with rasterio.open(original_file[0]) as src:
+                metadata = src.profile.copy()
+
+            metadata.update(
+                driver='GTiff',
+                dtype='float32',
+                count=1,
+                nodata=None
+            )
+
+            self._save_result(result, metadata, f"comp_{tile}_{date1}_{date2}_{index}")
+        return post - pre
+
 calculator = RasterCalculator('data/processed', 'rasters')
-ndvi = calculator.calculate_ndvi('T28RBS', '20211214', save_file=True)
-savi = calculator.calculate_savi('T28RBS', '20211214', save_file=True)
-nbr = calculator.calculate_nbr('T28RBS', '20211214', save_file=True)
-print(nbr)
+
+
