@@ -13,13 +13,16 @@ Analysis of vegetation recovery patterns following volcanic eruptions using sate
 Currently in preparation phase:
 - [x] Initial research completed
 - [x] Data access accounts created
-- [ ] Eruption selection pending
-- [ ] Data gathering not started
+- [x] Eruptions selected
+- [x] Pre, during and immediately post eruption gathered
+- [ ] collect longer timespan of data post eruption
+- [ ] visualize NDVI 
 
 ## Repository Structure
 
 ### /data (not tracked in git)
 - /raw - Original satellite imagery
+- /archive - Original .zips
 - /processed - Processed data
 
 ### /docs
@@ -38,7 +41,5 @@ Currently in preparation phase:
 [To be added]
 
 ## Current Focus
-[Current phase and immediate next steps]
+Since data collection and preparation is streamlined, the next step will be to calculate NDVI and visualize it. 
 
-## Progress Tracking
-[Link to project board]
