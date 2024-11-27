@@ -1,0 +1,60 @@
+# Data Inventory
+
+## Cumbre Vieja
+
+### Pre-Eruption 
+- Filename: S2B_MSIL2A_20210717T120329_N0500_R023_T28RBS_20230120T045519.SAFE
+  - Date: 20210717
+  - Clouds: 1%
+  - Tile: 28RBS(full)
+
+- Filename: S2A_MSIL2A_20210722T120331_N0500_R023_T28RBS_20230120T105710.SAFE
+  - Date: 20210722
+  - Clouds: 15%
+  - Tile: 28RBS(full)
+
+### Eruption 20210919
+- Filename: S2A_MSIL2A_20211209T120321_N0500_R023_T28RBS_20221225T010957.SAFE
+  - Date: 20211209
+  - Clouds: 47%
+  - Tile: 28RBS
+  - Notes: Cloudy, but expected during eruption
+
+- Filename: S2A_MSIL2A_20211209T120321_N0500_R023_T27RYM_20221225T010957.SAFE 
+  - Date: 20211209
+  - Clouds: 27%
+  - Tile: 27RYM
+  - Notes: different tile, probably useless but here just in case
+  
+- Filename:  S2A_MSIL2A_20211119T120321_N0301_R023_T28RBS_20211119T135634.SAFE 
+  - Date: 20211119
+  - Clouds: 5%
+  - Tile: 28RBS
+  
+- Filename: S2A_MSIL2A_20211109T120331_N0500_R023_T28RBS_20221229T073655.SAFE
+  - Date: 20211109
+  - Clouds: 23%
+  - Tile: 28RBS
+
+### Post-Eruption 20211213
+
+- Filename: S2A_MSIL2A_20211229T120331_N0301_R023_T28RBS_20211229T135434.SAFE
+  - Date: 20211229
+  - Clouds: 38%
+  - Tile: 28RBS
+
+- Filename:  S2B_MSIL2A_20211214T120319_N0500_R023_T28RBS_20221226T065701.SAFE 
+  - Date: 20211214
+  - Clouds: 2%
+  - Tile: 28RBS
+
+- Filename: S2A_MSIL2A_20220217T120321_N0400_R023_T28RBS_20220217T161428.SAFE
+  - Date: 20220217
+  - Clouds: 16%
+  - Tile: 28RBS
+
+- Filename:  S2B_MSIL2A_20220212T120319_N0400_R023_T28RBS_20220212T145020.SAFE 
+  - Date: 20220212
+  - Clouds: 7%
+  - Tile: 28RBS
+
