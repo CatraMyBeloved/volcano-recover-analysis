@@ -168,11 +168,20 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+#QGIS files
+qgis/*
+
 # Results (might be large)
 results/figures/*
 results/maps/*
+results/analysis_results/*
+results/rasters/*
 !results/figures/.gitkeep
 !results/maps/.gitkeep
+!results/analysis_results/.gitkeep
+!results/rasters/.gitkeep
+
+
 
 # Temporary files
 *.tmp

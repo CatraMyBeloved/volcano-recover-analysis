@@ -212,6 +212,5 @@ class RasterCalculator:
 
 
 calculator = RasterCalculator('data/processed', 'rasters')
-calculator.set_borders('lapalma')
-calculator.calculate_savi('T28RBS', '20210910', save_file=True, use_bounds=True)
-calculator.calculate_savi('T28RBS', '20211214', save_file=True, use_bounds=True)
+calculator.set_borders('lavaflow_lapalma')
+calculator.calculate_savi('T28RBS', '20220428', save_file=True, use_bounds=True)
