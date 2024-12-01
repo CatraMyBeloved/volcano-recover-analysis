@@ -127,6 +127,18 @@ class TemporalAnalysis:
 
         return pixel_variance
 
+    def calculate_scaled_std(self, save = False, A = 10, scale = 'sqrt'):
+        standard_deviation = self.calculate_pixel_std(save = False)
+        if scale == 'log':
+            scaled_standard_deviation = A * np.log(standard_deviation)
+        elif scale == 'sqrt':
+            scaled_standard_deviation = A * np.sqrt(standard_deviation)
+        else:
+            print('invalid scale')
+            return standard_deviation
+        if save:
+            self._save_result(scaled_standard_deviation, f'{self.tile}_pixel_std_{scale}scaled_{datetime.strftime(min(self.dates), '%Y%m%d')}_{datetime.strftime(max(self.dates), '%Y%m%d')}')
+
     def get_general_stats(self):
         print('General Statistics')
         print(f'Overall mean: {self.calculate_gen_mean()}')
@@ -143,3 +155,4 @@ analyzer = TemporalAnalysis(tile = 'T28RBS', dates = ['20180104', '20180119', '2
 analyzer.calculate_pixel_mean(save = True)
 analyzer.calculate_pixel_std(save = True)
 analyzer.calculate_pixel_variance(save = True)
+analyzer.calculate_scaled_std(scale = 'sqrt',save = True)
