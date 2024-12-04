@@ -13,7 +13,8 @@ class TemporalAnalysis:
         self.bounds = bounds
         self.tile = tile
         self.RasterCalculator = RasterCalculator
-        self.RasterCalculator.set_borders(self.bounds)
+        if bounds != None:
+            self.RasterCalculator.set_borders(self.bounds)
         self.results_folder = results_folder
         self.dates = []
         self.savi_series = []
@@ -139,6 +140,8 @@ class TemporalAnalysis:
         if save:
             self._save_result(scaled_standard_deviation, f'{self.tile}_pixel_std_{scale}scaled_{datetime.strftime(min(self.dates), '%Y%m%d')}_{datetime.strftime(max(self.dates), '%Y%m%d')}')
 
+        return scaled_standard_deviation
+
     def get_general_stats(self):
         print('General Statistics')
         print(f'Overall mean: {self.calculate_gen_mean()}')
@@ -148,11 +151,3 @@ class TemporalAnalysis:
         plt.gcf().autofmt_xdate()
         plt.show()
 
-calculator = RasterCalculator('data/processed', 'rasters')
-
-analyzer = TemporalAnalysis(tile = 'T28RBS', dates = ['20180104', '20180119', '20180305', '20180320', '20180608', '20180708', '20180713', '20180807', '20180812', '20180901', '20181001', '20181130', '20181220'], bounds = 'lavaflow_lapalma', RasterCalculator = calculator)
-
-analyzer.calculate_pixel_mean(save = True)
-analyzer.calculate_pixel_std(save = True)
-analyzer.calculate_pixel_variance(save = True)
-analyzer.calculate_scaled_std(scale = 'sqrt',save = True)

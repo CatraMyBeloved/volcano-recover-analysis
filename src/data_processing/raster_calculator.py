@@ -37,7 +37,6 @@ class RasterCalculator:
         resolution_selection = 'R' + resolution
         project_directory = Path(__file__).parents[2] / self.band_dir / tile / capture_date / resolution_selection
         jp2_files = list(project_directory.glob('*.jp2'))
-        print(jp2_files)
         selected_files = []
         for band in bands:
             band_files = [file for file in jp2_files if f'B{band}' in str(file)]
