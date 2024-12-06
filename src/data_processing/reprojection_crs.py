@@ -6,6 +6,29 @@ from rasterio.windows import from_bounds
 
 
 import numpy as np
+from scipy.interpolate import LinearNDInterpolator
+
+
+def clean_dem(src_path, dst_path):
+    with rasterio.open(src_path) as src:
+        data = src.read(1)
+        profile = src.profile.copy()
+
+        mask = data != src.nodata
+        rows, cols = np.where(mask)
+        values = data[rows, cols]
+
+        points = np.column_stack((rows, cols))
+        interpolator = LinearNDInterpolator(points, values)
+
+        grid_rows, grid_cols = np.mgrid[0:data.shape[0], 0:data.shape[1]]
+        interpolated_values = interpolator((grid_rows, grid_cols))
+
+        data[~mask] = interpolated_values[~mask]
+
+    with rasterio.open(dst_path, 'w', **profile) as dst:
+        dst.write(data, 1)
+
 
 def reproject_crs(src_path, dst_path, dst_crs):
 
@@ -67,4 +90,5 @@ def crop_intersection(dem_path, other_path, dst_path):
                             'height': other_data.shape[1]})
     with rasterio.open(f'{dst_path}/other_cropped.tif', 'w', other_data_meta) as dst:
         dst.write(other_data, 1)
+
 

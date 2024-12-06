@@ -13,6 +13,13 @@ def main():
                     'data/DEM_merged/lapalma_dem.tif'
                     )
 
+    reproject_crs('data/DEM_merged/lapalma_dem.tif',
+                  'data/DEM_merged/lapalma_dem_reprojected.tif', 'EPSG:32628')
+
+    crop_intersection('data/DEM_merged/lapalma_dem_reprojected.tif',
+                      'results/rasters/T28RBS_20180807_savi_crop.tif', dst_path=
+                      'data/DEM_finished')
+
 if __name__ == '__main__':
     main()
 
