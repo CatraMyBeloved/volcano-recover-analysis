@@ -96,12 +96,12 @@ class DEMProcessor:
 
         destination = np.zeros((height, width), dtype=raster.data.dtype)
 
-        reproject(source=raster.data, destination=destination,
-                  src_transform=raster.meta['transform'],
-                  src_crs=raster.meta['crs'],
-                  dst_transform=transform,
-                  dst_crs=target_crs,
-                  resampling=Resampling.bilinear)
+        destination = reproject(source=raster.data, destination=destination,
+                                src_transform=raster.meta['transform'],
+                                src_crs=raster.meta['crs'],
+                                dst_transform=transform,
+                                dst_crs=target_crs,
+                                resampling=Resampling.bilinear)
 
 
         raster.data = destination
