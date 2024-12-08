@@ -15,11 +15,9 @@ def main():
     processor = DEMProcessor('EPSG:32628', raster_data_objects= (dem_1, dem_2))
 
     processor.prepare_rasters()
-    counter = 0
-    for raster in processor.rasters:
-        counter += 1
-        raster.save(f'raster{counter}.tif')
 
+    result = processor.merge_rasters(0,1)
+    result.save('data/DEM_merged/merged.tif')
 
 if __name__ == '__main__':
     main()

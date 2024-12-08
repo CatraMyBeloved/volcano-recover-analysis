@@ -84,35 +84,34 @@ class DEMProcessor:
         raster.state = RasterState.CLEAN
 
     def _reproject_raster(self, raster, target_crs):
+        with rasterio.open('temp/temp_raster.tif', 'w', **raster.meta) as dst:
+            dst.write(raster.data, 1)
 
-        transform, width, height = calculate_default_transform(raster.meta[
-                                                                   'crs'],
-                                                               target_crs,
-                                                               raster.meta[
-                                                                   'width'],
-                                                               raster.meta[
-                                                                   'height'],
-                                                               *raster.bounds)
+        with rasterio.open('temp/temp_raster.tif') as src:
+            transform, width, height = calculate_default_transform(src.crs,
+                                                                   target_crs,
+                                                                   src.width,
+                                                                   src.height,
+                                                                   *src.bounds)
+            original_metadata = src.meta.copy()
+            original_metadata.update({'crs': target_crs, 'transform': transform,
+                                      'width': width, 'height': height})
 
-        destination = np.zeros((height, width), dtype=raster.data.dtype)
+            with rasterio.open('temp/temp_raster_reproj.tif', 'w', **original_metadata) as dst:
+                for i in range(1, src.count + 1):
+                    reproject(source=rasterio.band(src, i),
+                              destination=rasterio.band(dst, i),
+                              src_transform=src.transform,
+                              src_crs=src.crs,
+                              dst_transform=transform,
+                              dst_crs=target_crs,
+                              resampling=Resampling.bilinear)
 
-        destination = reproject(source=raster.data, destination=destination,
-                                src_transform=raster.meta['transform'],
-                                src_crs=raster.meta['crs'],
-                                dst_transform=transform,
-                                dst_crs=target_crs,
-                                resampling=Resampling.bilinear)
+        result = RasterData(source = 'temp/temp_raster_reproj.tif')
+        result.rastertype = RasterType.ELEVATION
+        result.state = RasterState.REPROJECTED
 
-
-        raster.data = destination
-        raster.meta.update(
-            {'crs': target_crs, 'transform': transform, 'width': width,
-             'height': height})
-        raster.bounds = BoundingBox(
-            *rasterio.transform.array_bounds(height, width, transform))
-        raster.state = RasterState.REPROJECTED
-
-
+        return result
     def _validate_for_merge(self, raster1: RasterData, raster2: RasterData):
 
         if raster1.meta['crs'] != raster2.meta['crs']:
@@ -140,22 +139,30 @@ class DEMProcessor:
         print(f'Choosing rasters to clean')
         rasters_to_clean = [raster for raster in self.rasters if
                             raster.state == RasterState.RAW]
+
         print(f'Cleaning {len(rasters_to_clean)} rasters')
+
         counter = 0
         for raster in rasters_to_clean:
             counter += 1
             print(f'Raster {counter}/{len(rasters_to_clean)} being cleaned...')
             self._clean_raster(raster)
+
         print(f'Cleaned {len(rasters_to_clean)} rasters')
         print(f'Choosing rasters to reproject')
+
         rasters_to_reproject = [raster for raster in self.rasters if
                                 raster.state == RasterState.CLEAN]
+
         print(f'Reprojecting {len(rasters_to_reproject)} rasters')
+
         counter = 0
+
         for raster in rasters_to_reproject:
             counter += 1
             print(
                 f'Raster {counter}/{len(rasters_to_reproject)} being reprojected...')
+
             self._reproject_raster(raster, self.target_crs)
 
     def merge_rasters(self, raster_index1: int, raster_index2: int):
@@ -184,8 +191,8 @@ class DEMProcessor:
         new_width_m = new_bounds[2] - new_bounds[0]
         new_height_m = new_bounds[3] - new_bounds[1]
         print(f'New dimensions in m: {new_width_m, new_height_m}')
-        new_width_pix = int(new_width_m / resolution)
-        new_height_pix = int(new_height_m / resolution)
+        new_width_pix = int(new_width_m / resolution) +1
+        new_height_pix = int(new_height_m / resolution) +1
         print(f'New dimensions in pixels: {new_width_pix, new_height_pix}')
         print(f'Creating new ndarray')
         new_data = np.empty((new_height_pix, new_width_pix),
