@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 import numpy as np
 import rasterio
+from rasterio.windows import Window
 from pathlib import Path
 
 class RasterState(Enum):
@@ -33,13 +34,25 @@ class RasterData:
     state: RasterState = RasterState.RAW
     rastertype: RasterType = RasterType.RAW_BAND
     bounds = None
+    read_with_window = False
+    window = None
 
     def __post_init__(self):
         if self.source is not None:
-            with rasterio.open(self.source) as src:
-                self.data = src.read(1)
-                self.meta = src.profile.copy()
-                self.bounds = src.bounds
+            if self.read_with_window:
+                with rasterio.open(self.source) as src:
+                    self.data = src.read(1, window= self.window)
+                    self.meta = src.profile.copy()
+                    self.bounds = src.bounds
+                    self.meta['height'] = self.window.height
+                    self.meta['width'] = self.window.width
+                    self.meta['transform'] = rasterio.windows.transform(
+                        self.window, self.meta['transform'])
+            else:
+                with rasterio.open(self.source) as src:
+                    self.data = src.read(1)
+                    self.meta = src.profile.copy()
+                    self.bounds = src.bounds
 
     def save(self, path: str | Path):
         """Saves the raster data to a file using the stored metadata"""
