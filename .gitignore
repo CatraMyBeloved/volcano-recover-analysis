@@ -181,6 +181,8 @@ results/rasters/*
 !results/analysis_results/.gitkeep
 !results/rasters/.gitkeep
 
+*.tif
+
 
 
 # Temporary files
