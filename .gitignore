@@ -163,11 +163,19 @@ cython_debug/
 
 # Project specific
 # Data directories (we don't want to track large data files)
+data/archive/*
+data/DEM_archive/*
+data/DEM_merged/*
+data/DEM_processed/*
+data/DEM_raw/*
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-
+!data/DEM_archive/.gitkeep
+!data/DEM_merged/.gitkeep
+!data/DEM_processed/.gitkeep
+!data/DEM_raw/.gitkeep
 #QGIS files
 qgis/*
 
