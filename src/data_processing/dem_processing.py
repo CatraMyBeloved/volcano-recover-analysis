@@ -1,56 +1,11 @@
-from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
-
+from src.helper import *
 import numpy as np
 import rasterio
 from rasterio.transform import Affine
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.coords import BoundingBox
-from scipy.interpolate import LinearNDInterpolator
+from scipy.interpolate import NearestNDInterpolator
 
-
-class RasterState(Enum):
-    RAW = 'raw'
-    CLEAN = 'clean'
-    MERGED = 'merged'
-    REPROJECTED = 'reprojected'
-    CROPPED = 'cropped'
-    CALCULATED = 'calculated'
-
-    def __str__(self):
-        return self.value
-
-
-class RasterType(Enum):
-    ELEVATION = 'elevation'
-    RAW_BAND = 'raw_band'
-    INDEX = 'index'
-
-    def __str__(self):
-        return self.value
-
-
-@dataclass
-class RasterData:
-    source: str = None
-    data: np.ndarray = None
-    meta: dict = None
-    state: RasterState = RasterState.RAW
-    rastertype: RasterType = RasterType.RAW_BAND
-    bounds = None
-
-    def __post_init__(self):
-        if self.source is not None:
-            with rasterio.open(self.source) as src:
-                self.data = src.read(1)
-                self.meta = src.profile.copy()
-                self.bounds = src.bounds
-
-    def save(self, path: str | Path):
-        """Saves the raster data to a file using the stored metadata"""
-        with rasterio.open(path, 'w', **self.meta) as dst:
-            dst.write(self.data, 1)
 
 
 class DEMProcessor:
@@ -74,7 +29,7 @@ class DEMProcessor:
         values = raster.data[rows, cols]
 
         points = np.column_stack((rows, cols))
-        interpolator = LinearNDInterpolator(points, values)
+        interpolator = NearestNDInterpolator(points, values)
 
         grid_rows, grid_cols = np.mgrid[0:raster.data.shape[0],
                                0:raster.data.shape[1]]
@@ -190,15 +145,12 @@ class DEMProcessor:
 
         new_width_m = new_bounds[2] - new_bounds[0]
         new_height_m = new_bounds[3] - new_bounds[1]
-        print(f'New dimensions in m: {new_width_m, new_height_m}')
         new_width_pix = int(new_width_m / resolution) +1
         new_height_pix = int(new_height_m / resolution) +1
-        print(f'New dimensions in pixels: {new_width_pix, new_height_pix}')
         print(f'Creating new ndarray')
         new_data = np.empty((new_height_pix, new_width_pix),
                             dtype=raster1.data.dtype)
         new_data[:] = raster1.meta['nodata']
-        print(f'New raster: {new_data.shape}')
 
         print(f'Calculating offsets')
         raster1_offset_x = int((raster1.bounds[0] - new_bounds[0])/resolution)
@@ -224,20 +176,6 @@ class DEMProcessor:
         y_start_2 = raster2_offset_y
         y_end_2 = raster2_offset_y + raster2_size[0]
 
-        print("Slice dimensions:")
-        print(f"y slice size1: {y_end_1 - y_start_1}")
-        print(f"x slice size1: {x_end_1 - x_start_1}")
-        print(f"y slice size2: {y_end_2 - y_start_2}")
-        print(f"x slice size2: {x_end_2 - x_start_2}")
-        print(f'raster1 bounds: {raster1.bounds}')
-        print(f'raster2 bounds: {raster2.bounds}')
-        print(f'new bounds: {new_bounds}')
-        print('\nDoes it fit?')
-        print(f'Target array shape: {new_data.shape}')
-        print(f'Pasting data 1 into: {(y_start_1,y_end_1), (x_start_1,x_end_1)}')
-        print(f'data 1 shape: {raster1.data.shape}')
-        print(f'Pasting data 2 into: {(y_start_2,y_end_2), (x_start_2,x_end_2)}')
-        print(f'data 2 shape: {raster2.data.shape}')
 
         new_data[y_start_1:y_end_1, x_start_1:x_end_1] = raster1.data
         new_data[y_start_2:y_end_2, x_start_2:x_end_2 ] = raster2.data

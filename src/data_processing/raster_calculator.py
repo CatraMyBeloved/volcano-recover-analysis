@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from src.helper import *
 import numpy as np
 import rasterio
 from rasterio.windows import Window
@@ -25,7 +25,8 @@ class RasterCalculator:
         self.results_folder = results_folder
         self.borders = Window(0, 0, 0, 0)  # xmin, xmax, ymin, ymax
 
-    def _selection(self, tile, capture_date, bands, resolution='10m'):
+    def _selection(self, tile, capture_date, bands, resolution='10m',
+                   use_window = False):
         """
         Selects files based on criteria and returns their path
         :param tile: Tile to examine
@@ -37,47 +38,15 @@ class RasterCalculator:
         resolution_selection = 'R' + resolution
         project_directory = Path(__file__).parents[2] / self.band_dir / tile / capture_date / resolution_selection
         jp2_files = list(project_directory.glob('*.jp2'))
-        selected_files = []
+        selected_rasters = []
         for band in bands:
-            band_files = [file for file in jp2_files if f'B{band}' in str(file)]
-            selected_files.extend(band_files)
-        return selected_files
 
-    def _save_result(self, result, source_metadata, name, folder=None, use_bounds=False):
-        if folder is None:
-            folder = self.results_folder
-        else:
-            folder = Path(folder)
+            band_files = [RasterData(file, read_with_bounds = use_window,
+                                     window = self.borders)
+                          for file in jp2_files if f'B{band}' in str(file)]
+            selected_rasters.extend(band_files)
+        return selected_rasters
 
-        project_directory = Path(__file__).parents[2]
-        result_directory = project_directory / 'results' / folder
-
-        result_directory.mkdir(parents=True, exist_ok=True)
-
-        metadata = source_metadata.copy()
-        if not use_bounds:
-            metadata.update(
-                driver='GTiff',
-                dtype='float32',
-                count=1,
-                nodata=None
-            )
-        else:
-            new_transform = rasterio.windows.transform(self.borders, metadata['transform'])
-            metadata.update(
-                driver='GTiff',
-                dtype='float32',
-                count=1,
-                nodata=None,
-                height=self.borders.height,
-                width=self.borders.width,
-                transform=new_transform
-            )
-
-
-
-        with rasterio.open(result_directory / f"{name}.tif", 'w', **metadata) as dst:
-            dst.write(result, 1)
 
     def set_borders(self, borders):
         if borders == 'lapalma':
@@ -87,35 +56,27 @@ class RasterCalculator:
         else:
             self.borders = Window(*borders)
 
-    def calculate_ndvi(self, tile, capture_date, save_file=False, use_bounds=False):
+    def calculate_ndvi(self, tile, capture_date, save_file=False,
+                       use_bounds=False):
         """
         Calculates NDVI for selected tile and capture date
         :param tile: Tile to examine
         :param capture_date: Date the data was captured
         :return: numpy array containing NDVI values
         """
-        ndvi_band_files = self._selection(tile, capture_date, ['04', '08'])
-        with rasterio.open(ndvi_band_files[0]) as red, rasterio.open(ndvi_band_files[1]) as nir:
-            source_metadata = red.profile.copy()
+        ndvi_band_data = self._selection(tile, capture_date, ['04', '08'], use_window = use_bounds)
+        red = np.clip(ndvi_band_data[0].data/10000, 0, 1)
+        nir = np.clip(ndvi_band_data[1].data/10000, 0, 1)
 
-            if use_bounds:
-                nir_data = nir.read(1, window=self.borders)
-                red_data = red.read(1, window=self.borders)
-            else:
-                nir_data = nir.read(1)
-                red_data = red.read(1)
 
-            nir_scaled = np.clip(nir_data.astype(float) / 10000, 0, 1)
-            red_scaled = np.clip(red_data.astype(float) / 10000, 0, 1)
+        ndvi_data = np.where(nir + red != 0, (nir - red) / (nir + red), 0)
 
-            ndvi = np.where(nir_scaled + red_scaled != 0, (nir_scaled - red_scaled) / (nir_scaled + red_scaled), 0)
+        ndvi = RasterData(data = ndvi_data, meta = ndvi_band_data[0].meta,
+                          state = RasterState.CALCULATED, rastertype =
+                          RasterType.INDEX)
 
         if save_file:
-            if use_bounds:
-                self._save_result(ndvi, source_metadata, f"{tile}_{capture_date}_ndvi_crop", use_bounds=use_bounds)
-            else:
-                self._save_result(ndvi, source_metadata, f"{tile}_{capture_date}_ndvi")
-
+            ndvi.save(self.results_folder / f'{tile}_{capture_date}_ndvi.png')
         return ndvi
 
     def calculate_savi(self, tile, capture_date, L=0.5, save_file=False, use_bounds=False):
@@ -126,31 +87,23 @@ class RasterCalculator:
         :param L: L factor
         :return: numpy array containing SAVI values
         """
-        savi_band_files = self._selection(tile, capture_date, ['04', '08'])
-        with rasterio.open(savi_band_files[0]) as red, rasterio.open(savi_band_files[1]) as nir:
-            source_metadata = red.profile.copy()
-            if use_bounds:
-                nir_data = nir.read(1, window=self.borders)
-                red_data = red.read(1, window=self.borders)
-            else:
-                nir_data = nir.read(1)
-                red_data = red.read(1)
+        savi_band_data = self._selection(tile, capture_date, ['04', '08'],
+                                         use_window=use_bounds)
+        red = np.clip(savi_band_data[0].data / 10000, 0, 1)
+        nir = np.clip(savi_band_data[1].data / 10000, 0, 1)
 
-            nir_scaled = np.clip(nir_data.astype(float) / 10000, 0, 1)
-            red_scaled = np.clip(red_data.astype(float) / 10000, 0, 1)
+        savi_data = np.where(nir + red != 0, ((nir - red) / (nir + red + L))
+                             * (1 + L), 0)
 
-            savi = np.where(nir_scaled + red_scaled != 0,
-                            ((nir_scaled - red_scaled) / (nir_scaled + red_scaled + L)) * (1 + L), 0)
-
+        savi = RasterData(data = savi_data, meta = savi_band_data[0].meta,
+                          state = RasterState.CALCULATED, rastertype=
+                          RasterType.INDEX)
         if save_file:
-            if use_bounds:
-                self._save_result(savi, source_metadata, f"{tile}_{capture_date}_savi_crop", use_bounds=use_bounds)
-            else:
-                self._save_result(savi, source_metadata, f"{tile}_{capture_date}_savi")
-
+            savi.save(self.results_folder / f'{tile}_{capture_date}_savi.png')
         return savi
 
-    def calculate_nbr(self, tile, capture_date, bands=None, resolution='20m', save_file=False):
+    def calculate_nbr(self, tile, capture_date, resolution='20m',
+                      save_file=False, use_bounds=False):
         """
         Calculates NBR for selected tile and capture date
         :param bands: bands to use for calculation
@@ -158,23 +111,20 @@ class RasterCalculator:
         :param capture_date: Date the data was captured
         :return: numpy array containing NBR values
         """
-        if bands is None:
-            bands = ['8A', '12']
-        nbr_band_files = self._selection(tile, capture_date, bands=bands, resolution=resolution)
-        with rasterio.open(nbr_band_files[0]) as nir, rasterio.open(nbr_band_files[1]) as swir:
-            source_metadata = swir.profile.copy()
-            nir_data = nir.read(1)  # reads as numpy array
-            swir_data = swir.read(1)
+        bands = ['8A', '12']
+        nbr_band_data = self._selection(tile, capture_date, bands=bands,
+                                     resolution=resolution,
+                                        use_window=use_bounds)
+        nir = np.clip(nbr_band_data[0].data / 10000, 0, 1)
+        swir = np.clip(nbr_band_data[1].data / 10000, 0, 1)
+        nbr_data = np.where(nir + swir != 0, ((nir - swir) / (nir + swir)), 0)
 
-            nir_scaled = np.clip(nir_data.astype(float) / 10000, 0, 1)
-            swir_scaled = np.clip(swir_data.astype(float) / 10000, 0, 1)
+        nbr = RasterData(data = nbr_data, meta = nbr_band_data[0].meta,
+                         state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
 
-            nbr = np.where(nir_scaled + swir_scaled != 0,
-                           ((nir_scaled - swir_scaled) / (nir_scaled + swir_scaled)), 0)
 
         if save_file:
-            self._save_result(nbr, source_metadata, f"{tile}_{capture_date}_nbr")
-
+            nbr.save(self.results_folder / f'{tile}_{capture_date}_nbr.png')
         return nbr
 
     def temporal_comparison(self, tile, date1, date2, index='savi', save_file=False):
@@ -190,26 +140,28 @@ class RasterCalculator:
         elif index == 'ndvi':
             pre = self.calculate_ndvi(tile, date1, save_file=False)
             post = self.calculate_ndvi(tile, date2, save_file=False)
-
-        result = post - pre
-
+        else:
+            print('Please select a valid index')
+            return None
+        result = RasterData(data = pre - post, meta = pre.meta, state =
+        RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save_file:
-            original_file = self._selection(tile, date1, ['02'])
-            print(original_file)
-            with rasterio.open(original_file[0]) as src:
-                metadata = src.profile.copy()
+            result.save(self.results_folder / f'{tile}_{date1}_{date2}_'
+                                              f'{index}.png')
+        return result
 
-            metadata.update(
-                driver='GTiff',
-                dtype='float32',
-                count=1,
-                nodata=None
-            )
+    def find_water(self, tile, capture_date, save_file = False,
+                   use_bounds=False):
+        water_band_data = self._selection(tile, capture_date, ['03', '08'])
 
-            self._save_result(result, metadata, f"comp_{tile}_{date1}_{date2}_{index}")
-        return post - pre
+        green = np.clip(water_band_data[0].data / 10000, 0, 1)
+        nir = np.clip(water_band_data[1].data / 10000, 0, 1)
+        ndwi_data = np.where(green + nir != 0, ((green - nir) / (nir + green)), -0.2)
 
+        ndwi = RasterData(data = ndwi_data, meta = water_band_data[0].meta,
+                          state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
+        if save_file:
+            ndwi.save(self.results_folder / f'{tile}_{capture_date}_ndwi.png')
 
-calculator = RasterCalculator('data/processed', 'rasters')
-calculator.set_borders('lavaflow_lapalma')
-calculator.calculate_savi('T28RBS', '20220428', save_file=True, use_bounds=True)
+        return ndwi
+
