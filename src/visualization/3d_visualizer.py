@@ -36,7 +36,6 @@ def simple_3d(data, meta):
     p.add_mesh(grid,
                scalars= data*0.1,
                cmap = 'magma',
-               smooth_shading=True,
                clim = [0, data.max()*0.1],
                lighting=True)
 
