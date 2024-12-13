@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from src.helper import *
 import numpy as np
 import rasterio
 from rasterio.windows import Window
@@ -41,6 +41,7 @@ class RasterCalculator:
         for band in bands:
             band_files = [file for file in jp2_files if f'B{band}' in str(file)]
             selected_files.extend(band_files)
+        print(selected_files)
         return selected_files
 
     def _save_result(self, result, source_metadata, name, folder=None, use_bounds=False):
@@ -141,7 +142,7 @@ class RasterCalculator:
 
             savi = np.where(nir_scaled + red_scaled != 0,
                             ((nir_scaled - red_scaled) / (nir_scaled + red_scaled + L)) * (1 + L), 0)
-
+            print(savi)
         if save_file:
             if use_bounds:
                 self._save_result(savi, source_metadata, f"{tile}_{capture_date}_savi_crop", use_bounds=use_bounds)
@@ -209,7 +210,33 @@ class RasterCalculator:
             self._save_result(result, metadata, f"comp_{tile}_{date1}_{date2}_{index}")
         return post - pre
 
+    def find_water(self, tile, capture_date, save_file = False,
+                   use_bounds=False):
+        water_band_files = self._selection(tile, capture_date, ['03', '08'])
+        with rasterio.open(water_band_files[0]) as green, rasterio.open(water_band_files[1]) as nir:
+            source_metadata = green.profile.copy()
+            if use_bounds:
+                nir_data = nir.read(1, window=self.borders)
+                green_data = green.read(1, window=self.borders)
+            else:
+                nir_data = nir.read(1)
+                green_data = green.read(1)
 
-calculator = RasterCalculator('data/processed', 'rasters')
-calculator.set_borders('lavaflow_lapalma')
-calculator.calculate_savi('T28RBS', '20220428', save_file=True, use_bounds=True)
+            nir_scaled = np.clip(nir_data.astype(float) / 10000, 0, 1)
+            green_scaled = np.clip(green_data.astype(float) / 10000, 0, 1)
+
+            ndwi = np.where(green_scaled + nir_scaled != 0,
+                            ((green_scaled - nir_scaled) / (nir_scaled + green_scaled)),
+                            -0.2)
+
+            if save_file:
+                if use_bounds:
+                    self._save_result(ndwi, source_metadata,
+                                      f"{tile}_{capture_date}_ndwi_crop",
+                                      use_bounds=use_bounds)
+                else:
+                    self._save_result(ndwi, source_metadata,
+                                      f"{tile}_{capture_date}_ndwi")
+
+            return ndwi
+

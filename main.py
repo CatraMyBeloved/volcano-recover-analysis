@@ -8,16 +8,16 @@ from src.visualization import *
 
 
 def main():
-    dem_1 = RasterData(source = 'data/DEM_raw/n28_w018_3arc_v2.tif')
-    dem_1.rastertype = RasterType.ELEVATION
-    dem_2 = RasterData(source = 'data/DEM_raw/n28_w019_3arc_v2.tif')
-    dem_2.rastertype = RasterType.ELEVATION
-    processor = DEMProcessor('EPSG:32628', raster_data_objects= (dem_1, dem_2))
+    calculator = RasterCalculator('data/processed',
+                                  results_folder='rasters')
 
-    processor.prepare_rasters()
+    calculator.set_borders('lapalma')
 
-    result = processor.merge_rasters(0,1)
-    result.save('data/DEM_merged/merged.tif')
+    calculator.calculate_savi(tile= 'T28RBS', capture_date ='20220428',
+                              save_file=True, use_bounds='lapalma')
+    calculator.find_water(tile= 'T28RBS', capture_date ='20180708',
+                              save_file=True, use_bounds='lapalma')
+
 
 if __name__ == '__main__':
     main()
