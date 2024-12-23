@@ -55,7 +55,7 @@ class RasterData:
                     self.meta = src.profile.copy()
                     self.bounds = src.bounds
         self.meta['driver'] = 'GTiff'
-
+        self.meta['dtype'] = 'float32'
     def save(self, path: str | Path):
         """Saves the raster data to a file using the stored metadata"""
         print(f'Trying to save to {path}')

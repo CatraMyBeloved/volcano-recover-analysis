@@ -13,7 +13,11 @@ def main():
     calculator = RasterCalculator('data/processed',
                                   results_folder='results/rasters')
 
-    calculator.calculate_savi('T28RBS', capture_date='20180807', save_file=True)
+    calculator.set_borders('lapalma')
+    calculator.calculate_savi('T28RBS', capture_date='20180807',
+                              save_file=True, use_bounds=True)
+
+
 
 
 

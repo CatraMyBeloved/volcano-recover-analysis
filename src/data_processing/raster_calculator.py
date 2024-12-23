@@ -90,11 +90,9 @@ class RasterCalculator:
         """
         savi_band_data = self._selection(tile, capture_date, ['04', '08'],
                                          use_window=use_bounds)
-        print(savi_band_data)
 
         red = np.clip(savi_band_data[0].data / 10000, 0, 1)
         nir = np.clip(savi_band_data[1].data / 10000, 0, 1)
-        print(red, nir)
         savi_data = np.where(nir + red != 0, ((nir - red) / (nir + red + L))
                              * (1 + L), 0)
 
@@ -103,8 +101,6 @@ class RasterCalculator:
                           state = RasterState.CALCULATED, rastertype=
                           RasterType.INDEX)
 
-        print(savi.data)
-        print(savi.meta)
 
         if save_file:
             savi.save(Path(self.results_folder) / f'{tile}_{capture_date}_savi.tif')
