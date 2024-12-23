@@ -41,10 +41,11 @@ class RasterCalculator:
         selected_rasters = []
         for band in bands:
 
-            band_files = [RasterData(file, read_with_bounds = use_window,
+            band_files = [RasterData(file, read_with_window = use_window,
                                      window = self.borders)
                           for file in jp2_files if f'B{band}' in str(file)]
             selected_rasters.extend(band_files)
+        print(jp2_files)
         return selected_rasters
 
 
@@ -76,7 +77,7 @@ class RasterCalculator:
                           RasterType.INDEX)
 
         if save_file:
-            ndvi.save(self.results_folder / f'{tile}_{capture_date}_ndvi.png')
+            ndvi.save(self.results_folder / f'{tile}_{capture_date}_ndvi.tif')
         return ndvi
 
     def calculate_savi(self, tile, capture_date, L=0.5, save_file=False, use_bounds=False):
@@ -89,17 +90,24 @@ class RasterCalculator:
         """
         savi_band_data = self._selection(tile, capture_date, ['04', '08'],
                                          use_window=use_bounds)
+        print(savi_band_data)
+
         red = np.clip(savi_band_data[0].data / 10000, 0, 1)
         nir = np.clip(savi_band_data[1].data / 10000, 0, 1)
-
+        print(red, nir)
         savi_data = np.where(nir + red != 0, ((nir - red) / (nir + red + L))
                              * (1 + L), 0)
+
 
         savi = RasterData(data = savi_data, meta = savi_band_data[0].meta,
                           state = RasterState.CALCULATED, rastertype=
                           RasterType.INDEX)
+
+        print(savi.data)
+        print(savi.meta)
+
         if save_file:
-            savi.save(self.results_folder / f'{tile}_{capture_date}_savi.png')
+            savi.save(Path(self.results_folder) / f'{tile}_{capture_date}_savi.tif')
         return savi
 
     def calculate_nbr(self, tile, capture_date, resolution='20m',
@@ -124,7 +132,7 @@ class RasterCalculator:
 
 
         if save_file:
-            nbr.save(self.results_folder / f'{tile}_{capture_date}_nbr.png')
+            nbr.save(Path(self.results_folder) / f'{tile}_{capture_date}_nbr.tif')
         return nbr
 
     def temporal_comparison(self, tile, date1, date2, index='savi', save_file=False):
@@ -146,11 +154,10 @@ class RasterCalculator:
         result = RasterData(data = pre - post, meta = pre.meta, state =
         RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save_file:
-            result.save(self.results_folder / f'{tile}_{date1}_{date2}_'
-                                              f'{index}.png')
+            result.save(self.results_folder / f'{tile}_{date1}_{date2}_{index}.png')
         return result
 
-    def find_water(self, tile, capture_date, save_file = False,
+    def calculate_ndwi(self, tile, capture_date, save_file = False,
                    use_bounds=False):
         water_band_data = self._selection(tile, capture_date, ['03', '08'])
 
@@ -161,7 +168,7 @@ class RasterCalculator:
         ndwi = RasterData(data = ndwi_data, meta = water_band_data[0].meta,
                           state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save_file:
-            ndwi.save(self.results_folder / f'{tile}_{capture_date}_ndwi.png')
+            ndwi.save(Path(self.results_folder) / f'{tile}_{capture_date}_ndwi.tif')
 
         return ndwi
 

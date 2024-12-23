@@ -4,6 +4,7 @@ import numpy as np
 import rasterio
 from rasterio.windows import Window
 from pathlib import Path
+from typing import Any
 
 class RasterState(Enum):
     RAW = 'raw'
@@ -33,9 +34,9 @@ class RasterData:
     meta: dict = None
     state: RasterState = RasterState.RAW
     rastertype: RasterType = RasterType.RAW_BAND
-    bounds = None
-    read_with_window = False
-    window = None
+    bounds : Any  = None
+    read_with_window : bool = False
+    window : rasterio.windows.Window = None
 
     def __post_init__(self):
         if self.source is not None:
@@ -53,9 +54,13 @@ class RasterData:
                     self.data = src.read(1)
                     self.meta = src.profile.copy()
                     self.bounds = src.bounds
+        self.meta['driver'] = 'GTiff'
 
     def save(self, path: str | Path):
         """Saves the raster data to a file using the stored metadata"""
-        with rasterio.open(path, 'w', **self.meta) as dst:
-            dst.write(self.data, 1)
-
+        print(f'Trying to save to {path}')
+        try:
+            with rasterio.open(path, 'w', **self.meta) as dst:
+                dst.write(self.data, 1)
+        except Exception as e:
+            print(f'Failed to save to {path}: {e}')
