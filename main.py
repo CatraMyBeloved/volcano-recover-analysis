@@ -17,7 +17,8 @@ def main():
     calculator.calculate_savi('T28RBS', capture_date='20180807',
                               save_file=True, use_bounds=True)
 
-
+    calculator.calculate_nbr('T28RBS', capture_date='20180807',
+                              save_file=True, use_bounds=True)
 
 
 

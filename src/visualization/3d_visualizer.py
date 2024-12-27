@@ -101,7 +101,6 @@ def color_3d(elev_data, elev_meta, color_data, color_meta):
                lighting=True)
 
     p.add_axes(interactive=True)
-    p.add_scalar_bar('Elevation (10m)')
     p.show()
 
 
