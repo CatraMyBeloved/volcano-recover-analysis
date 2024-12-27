@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from rasterio.windows import Window
 from src.data_processing import RasterCalculator
+from src.helper import *
 
 class TemporalAnalysis:
 
@@ -96,36 +97,38 @@ class TemporalAnalysis:
 
 
     def calculate_gen_mean(self):
-        return np.mean([np.mean(savi) for savi in self.savi_series])
+        return np.mean([np.mean(savi.data) for savi in self.savi_series])
 
     def calculate_gen_std(self):
-        return np.std([np.mean(savi) for savi in self.savi_series])
+        return np.std([np.mean(savi.data) for savi in self.savi_series])
 
     def calculate_gen_var(self):
-        return np.var([np.mean(savi) for savi in self.savi_series])
+        return np.var([np.mean(savi.data) for savi in self.savi_series])
 
 
     def calculate_pixel_mean(self, save = False):
-        savi_stack = np.stack(self.savi_series)
+        savi_stack = np.stack(arrays= [savi.data for savi in self.savi_series])
         pixel_mean = np.mean(savi_stack, axis = 0)
+        pixel_mean_result = RasterData(data = pixel_mean, meta = savi_stack[0].meta.copy(), state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save:
-            self._save_result(pixel_mean, f'{self.tile}_pixel_mean_{datetime.strftime(min(self.dates), '%Y%m%d')}_{datetime.strftime(max(self.dates), '%Y%m%d')}')
-        return pixel_mean
+            pixel_mean_result.save('../results/analysis-result')
+        return pixel_mean_result
 
     def calculate_pixel_std(self, save = False):
         savi_stack = np.stack(self.savi_series)
         pixel_std = np.std(savi_stack, axis = 0)
+        pixel_std_result = RasterData(data = pixel_std, meta = savi_stack[0].meta.copy(), state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save:
-            self._save_result(pixel_std, f'{self.tile}_pixel_std_{datetime.strftime(min(self.dates), '%Y%m%d')}_{datetime.strftime(max(self.dates), '%Y%m%d')}')
+            pixel_std_result.save('../results/analysis-result')
 
-        return pixel_std
+        return pixel_std_result
 
     def calculate_pixel_variance(self, save = False):
         savi_stack = np.stack(self.savi_series)
         pixel_variance = np.var(savi_stack, axis = 0)
+        pixel_var_result = RasterData(data = pixel_var, meta = savi_stack[0].meta.copy(), state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save:
-            self._save_result(pixel_variance, f'{self.tile}_pixel_var_{datetime.strftime(min(self.dates), '%Y%m%d')}_{datetime.strftime(max(self.dates), '%Y%m%d')}')
-
+            pixel_var_result.save('../results/analysis-result')
         return pixel_variance
 
     def calculate_scaled_std(self, save = False, A = 10, scale = 'sqrt'):
@@ -137,8 +140,9 @@ class TemporalAnalysis:
         else:
             print('invalid scale')
             return standard_deviation
+        scaled_standard_deviation_result = pixel_std_scale_result = RasterData(data = scaled_standard_deviation, meta = self.savi_stack[0].meta.copy(), state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
         if save:
-            self._save_result(scaled_standard_deviation, f'{self.tile}_pixel_std_{scale}scaled_{datetime.strftime(min(self.dates), '%Y%m%d')}_{datetime.strftime(max(self.dates), '%Y%m%d')}')
+            scaled_standard_deviation_result.save('../results/analysis-result')
 
         return scaled_standard_deviation
 

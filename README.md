@@ -16,7 +16,7 @@ Currently working on the different tools needed:
  - [x] data selection
  - [x] data processing over longer time frame
  - [x] simple visualizations
- - [ ] DEM management and visualization
+ - [x] DEM management and visualization
  
 ## Repository Structure
 

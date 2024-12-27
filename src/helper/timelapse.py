@@ -9,7 +9,6 @@ dates_to_process = ['20180104', '20180119', '20180305', '20180320', '20180608', 
 calculator.set_borders('lavaflow_lapalma')
 means = []
 for date in dates_to_process:
-    print(date)
     savi = calculator.calculate_savi('T28RBS', capture_date = date, save_file = True, use_bounds = True)
     relevant_points = savi[np.where(savi > 0)]
     means.append(np.mean(relevant_points).item())
