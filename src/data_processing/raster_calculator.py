@@ -116,9 +116,16 @@ class RasterCalculator:
         :return: numpy array containing NBR values
         """
         bands = ['8A', '12']
+        temp_bounds = [self.borders.col_off / 2, self.borders.row_off / 2,
+                       self.borders.width / 2, self.borders.height / 2]
+        new_bounds = Window(*temp_bounds)
+        orig_bounds = self.borders
+        self.borders = new_bounds
+
         nbr_band_data = self._selection(tile, capture_date, bands=bands,
                                      resolution=resolution,
                                         use_window=use_bounds)
+        self.borders = orig_bounds
         nir = np.clip(nbr_band_data[0].data / 10000, 0, 1)
         swir = np.clip(nbr_band_data[1].data / 10000, 0, 1)
         nbr_data = np.where(nir + swir != 0, ((nir - swir) / (nir + swir)), 0)

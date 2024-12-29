@@ -58,9 +58,10 @@ class RasterData:
         self.meta['dtype'] = 'float32'
     def save(self, path: str | Path):
         """Saves the raster data to a file using the stored metadata"""
+        results_folder = Path('results')
         print(f'Trying to save to {path}')
         try:
-            with rasterio.open(path, 'w', **self.meta) as dst:
+            with rasterio.open(results_folder / path, 'w', **self.meta) as dst:
                 dst.write(self.data, 1)
         except Exception as e:
             print(f'Failed to save to {path}: {e}')

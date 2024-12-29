@@ -11,16 +11,26 @@ from src.helper import *
 
 def main():
     calculator = RasterCalculator('data/processed',
-                                  results_folder='results/rasters')
+                                  results_folder='/rasters')
+    dates = [
+        '20190213',
+        '20190223',
+        '20190310',
+        '20190414',
+        '20190524',
+        '20190603',
+        '20190713',
+        '20190723',
+        '20190812',
+        '20190901',
+        '20191001',
+        '20191031',
+        '20191130',
+    ]
+    temp_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds = 'lapalma')
 
-    calculator.set_borders('lapalma')
-    calculator.calculate_savi('T28RBS', capture_date='20180807',
-                              save_file=True, use_bounds=True)
 
-    calculator.calculate_nbr('T28RBS', capture_date='20180807',
-                              save_file=True, use_bounds=True)
-
-
+    temp_analysis.calculate('savi', save_file=True)
 
 if __name__ == '__main__':
     main()
