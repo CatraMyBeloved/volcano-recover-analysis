@@ -12,25 +12,18 @@ from src.helper import *
 def main():
     calculator = RasterCalculator('data/processed',
                                   results_folder='/rasters')
-    dates = [
-        '20190213',
-        '20190223',
-        '20190310',
-        '20190414',
-        '20190524',
-        '20190603',
-        '20190713',
-        '20190723',
-        '20190812',
-        '20190901',
-        '20191001',
-        '20191031',
-        '20191130',
-    ]
-    temp_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds = 'lapalma')
+    dates = year2018
+    temp1_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds =
+    'lavaflow_lapalma')
 
+    temp1_analysis.calculate('savi', save_file=True)
 
-    temp_analysis.calculate('savi', save_file=True)
+    dates = year2019
+
+    temp2_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds =
+                                'lavaflow_lapalma')
+
+    temp2_analysis.calculate('savi', save_file=True)
 
 if __name__ == '__main__':
     main()

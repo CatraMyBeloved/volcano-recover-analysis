@@ -6,7 +6,6 @@ import numpy as np
 import rasterio
 from matplotlib.colors import BoundaryNorm, ListedColormap
 
-from src.data_processing import TemporalAnalysis
 
 
 class Visualizer:
@@ -104,34 +103,3 @@ class Visualizer:
 
         return data.reshape(rows, size, cols, size).mean(axis=(1,3))
 
-    def plot_timeseries(self, TemporalAnalysis: TemporalAnalysis,
-                        subsample_size:int = 3) -> plt.Figure:
-        mean = TemporalAnalysis.calculate_pixel_mean()
-        scaled_std = TemporalAnalysis.calculate_scaled_std()
-        var = TemporalAnalysis.calculate_pixel_variance()
-
-        subsampled_std = self.subsampling(scaled_std, subsample_size)
-        subsampled_mean = self.subsampling(mean, subsample_size)
-
-        x, y = np.mgrid[0:subsampled_mean.shape[0], 0:subsampled_mean.shape[1]]
-
-        fig = plt.figure(figsize=(12, 8))
-        ax = fig.add_subplot(111, projection='3d')
-
-        surface = ax.plot_surface(x, y, np.log(subsampled_std),
-                                  facecolors=plt.cm.get_cmap(
-                                      'magma')(subsampled_mean /
-                                               subsampled_mean.max()),
-                                  alpha=0.9,
-                                  rstride=1,
-                                  cstride=1,
-                                  linewidth=0
-                                  )
-
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-
-        ax.view_init(elev=25, azim=15)
-
-        plt.show()
-        return fig

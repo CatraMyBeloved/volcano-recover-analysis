@@ -1,8 +1,20 @@
-import numpy as np
-import rasterio
-from rasterio.windows import Window
+import datetime
+from src.helper import *
+import pandas as pd
+import matplotlib.pyplot as plt
 
-with rasterio.open('data/DEM_merged/merged_30.tif') as src:
-    borders = Window(393, 340, 3698-393, 5148-340)
-    data = src.read(1, window = borders)
-    print(len(data[np.where(data > 10)]))
+dates_datetime = [datetime.datetime.strptime(string[4:], '%m%d') for string in
+                  year2018]
+dates_datetime2 = [datetime.datetime.strptime(string[4:], '%m%d') for string
+                   in year2019]
+
+date_series = pd.Series(pd.date_range(start=dates_datetime[0], end=dates_datetime[-1]))
+
+
+
+fig, ax = plt.subplots()
+ax.axhline(y=0.5, color='black')
+ax.vlines(x=dates_datetime, ymin=0.5, ymax=1, color='red')
+ax.axhline(y=0, color='black')
+ax.vlines(x=dates_datetime2, ymin=0, ymax=0.5, color='blue')
+plt.show()
