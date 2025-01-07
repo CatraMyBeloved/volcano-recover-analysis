@@ -104,7 +104,6 @@ class Timeseries:
     def _clean_data_matrix(self, data_matrix, threshold):
         data_matrix = data_matrix.copy()
         differences = data_matrix[:, 1:] - data_matrix[:, :-1]
-        print(differences)
         pixel, timestep = np.where(differences > threshold)
         print(f'Difference matrix length: {len(differences)}')
         print(f'{len(pixel)} pixels above threshold')
