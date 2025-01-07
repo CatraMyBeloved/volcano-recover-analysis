@@ -55,5 +55,3 @@ class SentinelProcessor:
         for safe_file in safe_files:
             self._extract_bands(safe_file)
 
-processor = SentinelProcessor()
-processor.process_all()

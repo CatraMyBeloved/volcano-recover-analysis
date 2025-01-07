@@ -1,29 +1,28 @@
 from pathlib import Path
 
+import numpy as np
+from numpy.polynomial.polynomial import polyfit
 from seaborn._core.scales import Temporal
-
 from src.data_processing import *
 from src.helper.coordinate_transform import pixel_to_geographic, \
     geographic_to_pixel
 from src.visualization import *
 from src.helper import *
+from numpy.polynomial import Polynomial as Poly
+
 
 
 def main():
-    calculator = RasterCalculator('data/processed',
-                                  results_folder='/rasters')
-    dates = year2018
-    temp1_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds =
-    'lavaflow_lapalma')
-
-    temp1_analysis.calculate('savi', save_file=True)
 
     dates = year2019
+    temp1_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds =
+    'lapalma')
 
-    temp2_analysis = Timeseries(tile = 'T28RBS', dates=dates, bounds =
-                                'lavaflow_lapalma')
+    matrix = temp1_analysis.create_timeseries_matrix('savi')
 
-    temp2_analysis.calculate('savi', save_file=True)
+    print(f'Matrix :{matrix}')
+    print(f'Matrix shape: {matrix.shape}')
+
 
 if __name__ == '__main__':
     main()
