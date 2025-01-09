@@ -45,7 +45,6 @@ class RasterCalculator:
                                      window = self.borders)
                           for file in jp2_files if f'B{band}' in str(file)]
             selected_rasters.extend(band_files)
-        print(jp2_files)
         return selected_rasters
 
 

@@ -6,6 +6,7 @@ from src.helper import *
 from src.data_processing import *
 from dataclasses import dataclass
 from numpy.polynomial import Polynomial as Poly
+from sklearn.cluster import KMeans
 class Timeseries:
     def __init__(self,tile, dates, bounds = None) -> None:
         self.tile = tile
@@ -69,6 +70,7 @@ class Timeseries:
                             f'{self.dates[-1]}_{index}_mean.tif')
             pixel_std.save(f'analysis_results/{self.dates[0]}_'
                            f'{self.dates[-1]}_{index}_std.tif')
+        return pixel_mean, pixel_std
 
     def create_timeseries_matrix(self, index):
         temporary_list = []
@@ -97,24 +99,27 @@ class Timeseries:
 
         if temporary_list:
             data_matrix = np.stack(temporary_list, axis = 0).T
-            data_matrix = self._clean_data_matrix(data_matrix, 0.3)
+            data_matrix = self._clean_data_matrix(data_matrix, -0.2)
             self.matrix = data_matrix
         return data_matrix
 
     def _clean_data_matrix(self, data_matrix, threshold):
         data_matrix = data_matrix.copy()
         differences = data_matrix[:, 1:] - data_matrix[:, :-1]
-        pixel, timestep = np.where(differences > threshold)
+        pixel, timestep = np.where(differences < threshold)
+
         print(f'Difference matrix length: {len(differences)}')
         print(f'{len(pixel)} pixels above threshold')
-        print(f'Portion of pixels above threshold: {len(pixel)/len(data_matrix)}')
+        print(f'Portion of pixels above threshold: '
+              f'{len(pixel)/data_matrix.size}')
+
         for pixel, timestep in zip(pixel, timestep):
             before_value = data_matrix[pixel, timestep]
             if timestep +2 >= data_matrix.shape[1]:
                 after_value = before_value
             else:
                 after_value = data_matrix[pixel, timestep + 2]
-            data_matrix[pixel, timestep+1] = (before_value - after_value)/2
+            data_matrix[pixel, timestep+1] = (before_value + after_value)/2
 
         return data_matrix
 
@@ -129,3 +134,28 @@ class Timeseries:
         if save_raster:
             slope_data.save(f'analysis_results/{self.dates[0]}_'
                             f'{self.dates[-1]}_slopes.tif')
+
+    def create_clusters_matrix(self, n_clusters, random_state = 42,
+                               save_raster = False):
+        clustering = KMeans(n_clusters=n_clusters, random_state=random_state)
+        labels = clustering.fit_predict(self.matrix)
+        labels_2d = labels.reshape(
+            (self.meta['height'], self.meta[
+                'width']))
+
+        cluster_raster = RasterData(
+            data=labels_2d,
+            meta=self.meta,
+            state=RasterState.CALCULATED
+        )
+        if save_raster:
+            cluster_raster.save(f'analysis_results/{self.dates[0]}_'
+                                f'{self.dates[-1]}_clusters.tif')
+        return cluster_raster
+
+    def fit_polynomial(self,degree = 2, save_raster = False):
+        x_axis = np.arange(0, self.matrix.shape[1])
+        matrix = self.matrix.T
+        polynomials = polyfit(x_axis, matrix, degree)
+
+        return polynomials
