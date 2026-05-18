@@ -1,178 +1,179 @@
 from pathlib import Path
-from src.helper import *
+
 import numpy as np
 import rasterio
 from rasterio.windows import Window
 
+from src.helper.raster_data import RasterData, RasterState, RasterType
+
 
 class RasterCalculator:
-    """
-    RasterCalculator: Used to conduct different calculations on raster data captured by sentinel
+    """Computes spectral indices from Sentinel-2 surface reflectance bands."""
 
-    Arguments:
-        - band_dir: Directory where extracted SAFE folders are stored
-        - resolution: Resolution of raster data to examine, standard 10m
+    NAMED_WINDOWS = {
+        'lapalma': Window(393, 340, 3698 - 393, 5148 - 340),
+        'lavaflow_lapalma': Window(1209, 2591, 2510 - 1209, 3860 - 2591),
+    }
 
-    Functions:
-        - _selection: Returns path to specific pictures based on tile, capture date and bands.
-        - calculate_ndvi: Returns ndvi for selected tile and capture date. Uses B04 and B08 from sentinel 2
-
-    """
-
-    def __init__(self, band_dir, results_folder):
-        """Initializes RasterCalculator with standard resolution of 10m and directory for data"""
+    def __init__(self, band_dir: str, results_folder: str) -> None:
         self.band_dir = band_dir
         self.results_folder = results_folder
-        self.borders = Window(0, 0, 0, 0)  # xmin, xmax, ymin, ymax
+        self.borders = Window(0, 0, 0, 0)
 
-    def _selection(self, tile, capture_date, bands, resolution='10m',
-                   use_window = False):
-        """
-        Selects files based on criteria and returns their path
-        :param tile: Tile to examine
-        :param capture_date: Date the picture was captures
-        :param bands: which bands to return
-        :return: path(s) to selected pictures
-        """
-
-        resolution_selection = 'R' + resolution
-        project_directory = Path(__file__).parents[2] / self.band_dir / tile / capture_date / resolution_selection
+    def _selection(
+        self,
+        tile: str,
+        capture_date: str,
+        bands: list[str],
+        resolution: str = '10m',
+        use_window: bool = False,
+    ) -> list[RasterData]:
+        resolution_dir = f'R{resolution}'
+        project_directory = (
+            Path(__file__).parents[2] / self.band_dir / tile / capture_date / resolution_dir
+        )
         jp2_files = list(project_directory.glob('*.jp2'))
         selected_rasters = []
         for band in bands:
-
-            band_files = [RasterData(file, read_with_window = use_window,
-                                     window = self.borders)
-                          for file in jp2_files if f'B{band}' in str(file)]
+            band_files = [
+                RasterData(file, read_with_window=use_window, window=self.borders)
+                for file in jp2_files if f'B{band}' in str(file)
+            ]
             selected_rasters.extend(band_files)
         return selected_rasters
 
-
-    def set_borders(self, borders):
-        if borders == 'lapalma':
-            self.borders = Window(393, 340, 3698-393, 5148-340)
-        elif borders == 'lavaflow_lapalma':
-            self.borders = Window(1209, 2591, 2510-1209, 3860-2591)
+    def set_borders(self, borders: str | tuple) -> None:
+        if isinstance(borders, str):
+            if borders not in self.NAMED_WINDOWS:
+                raise ValueError(
+                    f"Unknown window name '{borders}'. Known: {list(self.NAMED_WINDOWS)}"
+                )
+            self.borders = self.NAMED_WINDOWS[borders]
         else:
             self.borders = Window(*borders)
 
-    def calculate_ndvi(self, tile, capture_date, save_file=False,
-                       use_bounds=False):
-        """
-        Calculates NDVI for selected tile and capture date
-        :param tile: Tile to examine
-        :param capture_date: Date the data was captured
-        :return: numpy array containing NDVI values
-        """
-        ndvi_band_data = self._selection(tile, capture_date, ['04', '08'], use_window = use_bounds)
-        red = np.clip(ndvi_band_data[0].data/10000, 0, 1)
-        nir = np.clip(ndvi_band_data[1].data/10000, 0, 1)
-
-
+    def calculate_ndvi(
+        self,
+        tile: str,
+        capture_date: str,
+        save_file: bool = False,
+        use_bounds: bool = False,
+    ) -> RasterData:
+        bands = self._selection(tile, capture_date, ['04', '08'], use_window=use_bounds)
+        red = np.clip(bands[0].data / 10000, 0, 1)
+        nir = np.clip(bands[1].data / 10000, 0, 1)
         ndvi_data = np.where(nir + red != 0, (nir - red) / (nir + red), 0)
 
-        ndvi = RasterData(data = ndvi_data, meta = ndvi_band_data[0].meta,
-                          state = RasterState.CALCULATED, rastertype =
-                          RasterType.INDEX)
-
+        ndvi = RasterData(
+            data=ndvi_data, meta=bands[0].meta,
+            state=RasterState.CALCULATED, rastertype=RasterType.INDEX,
+        )
         if save_file:
-            ndvi.save(self.results_folder / f'{tile}_{capture_date}_ndvi.tif')
+            ndvi.save(Path(self.results_folder) / f'{tile}_{capture_date}_ndvi.tif')
         return ndvi
 
-    def calculate_savi(self, tile, capture_date, L=0.5, save_file=False, use_bounds=False):
-        """
-        Calculates SAVI for selected tile and capture date
-        :param tile: Tile to examine
-        :param capture_date: Date the data was captured
-        :param L: L factor
-        :return: numpy array containing SAVI values
-        """
-        savi_band_data = self._selection(tile, capture_date, ['04', '08'],
-                                         use_window=use_bounds)
+    def calculate_savi(
+        self,
+        tile: str,
+        capture_date: str,
+        L: float = 0.5,
+        save_file: bool = False,
+        use_bounds: bool = False,
+    ) -> RasterData:
+        bands = self._selection(tile, capture_date, ['04', '08'], use_window=use_bounds)
+        red = np.clip(bands[0].data / 10000, 0, 1)
+        nir = np.clip(bands[1].data / 10000, 0, 1)
+        savi_data = np.where(
+            nir + red != 0,
+            ((nir - red) / (nir + red + L)) * (1 + L),
+            0,
+        )
 
-        red = np.clip(savi_band_data[0].data / 10000, 0, 1)
-        nir = np.clip(savi_band_data[1].data / 10000, 0, 1)
-        savi_data = np.where(nir + red != 0, ((nir - red) / (nir + red + L))
-                             * (1 + L), 0)
-
-
-        savi = RasterData(data = savi_data, meta = savi_band_data[0].meta,
-                          state = RasterState.CALCULATED, rastertype=
-                          RasterType.INDEX)
-
-
+        savi = RasterData(
+            data=savi_data, meta=bands[0].meta,
+            state=RasterState.CALCULATED, rastertype=RasterType.INDEX,
+        )
         if save_file:
             savi.save(Path(self.results_folder) / f'{tile}_{capture_date}_savi.tif')
         return savi
 
-    def calculate_nbr(self, tile, capture_date, resolution='20m',
-                      save_file=False, use_bounds=False):
-        """
-        Calculates NBR for selected tile and capture date
-        :param bands: bands to use for calculation
-        :param tile: Tile to examine
-        :param capture_date: Date the data was captured
-        :return: numpy array containing NBR values
-        """
-        bands = ['8A', '12']
-        temp_bounds = [self.borders.col_off / 2, self.borders.row_off / 2,
-                       self.borders.width / 2, self.borders.height / 2]
-        new_bounds = Window(*temp_bounds)
-        orig_bounds = self.borders
-        self.borders = new_bounds
+    def calculate_nbr(
+        self,
+        tile: str,
+        capture_date: str,
+        resolution: str = '20m',
+        save_file: bool = False,
+        use_bounds: bool = False,
+    ) -> RasterData:
+        # NBR uses 20 m bands (B8A, B12). Halve the 10 m window for selection,
+        # then restore the original window.
+        original_window = self.borders
+        self.borders = Window(
+            original_window.col_off / 2,
+            original_window.row_off / 2,
+            original_window.width / 2,
+            original_window.height / 2,
+        )
+        bands = self._selection(
+            tile, capture_date, ['8A', '12'],
+            resolution=resolution, use_window=use_bounds,
+        )
+        self.borders = original_window
 
-        nbr_band_data = self._selection(tile, capture_date, bands=bands,
-                                     resolution=resolution,
-                                        use_window=use_bounds)
-        self.borders = orig_bounds
-        nir = np.clip(nbr_band_data[0].data / 10000, 0, 1)
-        swir = np.clip(nbr_band_data[1].data / 10000, 0, 1)
-        nbr_data = np.where(nir + swir != 0, ((nir - swir) / (nir + swir)), 0)
+        nir = np.clip(bands[0].data / 10000, 0, 1)
+        swir = np.clip(bands[1].data / 10000, 0, 1)
+        nbr_data = np.where(nir + swir != 0, (nir - swir) / (nir + swir), 0)
 
-        nbr = RasterData(data = nbr_data, meta = nbr_band_data[0].meta,
-                         state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
-
-
+        nbr = RasterData(
+            data=nbr_data, meta=bands[0].meta,
+            state=RasterState.CALCULATED, rastertype=RasterType.INDEX,
+        )
         if save_file:
             nbr.save(Path(self.results_folder) / f'{tile}_{capture_date}_nbr.tif')
         return nbr
 
-    def temporal_comparison(self, tile, date1, date2, index='savi', save_file=False):
-        if index not in ['savi', 'ndvi', 'nbr']:
-            return None
+    def calculate_ndwi(
+        self,
+        tile: str,
+        capture_date: str,
+        save_file: bool = False,
+        use_bounds: bool = False,
+    ) -> RasterData:
+        bands = self._selection(tile, capture_date, ['03', '08'], use_window=use_bounds)
+        green = np.clip(bands[0].data / 10000, 0, 1)
+        nir = np.clip(bands[1].data / 10000, 0, 1)
+        ndwi_data = np.where(green + nir != 0, (green - nir) / (nir + green), -0.2)
 
-        if index == 'savi':
-            pre = self.calculate_savi(tile, date1, save_file=False)
-            post = self.calculate_savi(tile, date2, save_file=False)
-        elif index == 'nbr':
-            pre = self.calculate_nbr(tile, date1, save_file=False)
-            post = self.calculate_nbr(tile, date2, save_file=False)
-        elif index == 'ndvi':
-            pre = self.calculate_ndvi(tile, date1, save_file=False)
-            post = self.calculate_ndvi(tile, date2, save_file=False)
-        else:
-            print('Please select a valid index')
-            return None
-        result = RasterData(data = pre - post, meta = pre.meta, state =
-        RasterState.CALCULATED, rastertype= RasterType.INDEX)
-        if save_file:
-            result.save(self.results_folder / f'{tile}_{date1}_{date2}_{index}.png')
-        return result
-
-    def calculate_ndwi(self, tile, capture_date, save_file = False,
-                   use_bounds=False):
-        water_band_data = self._selection(tile, capture_date, ['03', '08'])
-
-        green = np.clip(water_band_data[0].data / 10000, 0, 1)
-        nir = np.clip(water_band_data[1].data / 10000, 0, 1)
-        ndwi_data = np.where(green + nir != 0, ((green - nir) / (nir + green)), -0.2)
-
-        ndwi = RasterData(data = ndwi_data, meta = water_band_data[0].meta,
-                          state = RasterState.CALCULATED, rastertype= RasterType.INDEX)
+        ndwi = RasterData(
+            data=ndwi_data, meta=bands[0].meta,
+            state=RasterState.CALCULATED, rastertype=RasterType.INDEX,
+        )
         if save_file:
             ndwi.save(Path(self.results_folder) / f'{tile}_{capture_date}_ndwi.tif')
-
         return ndwi
 
-
-
+    def temporal_comparison(
+        self,
+        tile: str,
+        date1: str,
+        date2: str,
+        index: str = 'savi',
+        save_file: bool = False,
+    ) -> RasterData | None:
+        dispatch = {
+            'savi': self.calculate_savi,
+            'ndvi': self.calculate_ndvi,
+            'nbr': self.calculate_nbr,
+        }
+        if index not in dispatch:
+            return None
+        calc = dispatch[index]
+        pre = calc(tile, date1, save_file=False)
+        post = calc(tile, date2, save_file=False)
+        result = RasterData(
+            data=pre.data - post.data, meta=pre.meta,
+            state=RasterState.CALCULATED, rastertype=RasterType.INDEX,
+        )
+        if save_file:
+            result.save(Path(self.results_folder) / f'{tile}_{date1}_{date2}_{index}.tif')
+        return result
