@@ -930,7 +930,7 @@ wheels = [
 [[package]]
 name = "volcano-recover-analysis"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "cdsetool" },
     { name = "matplotlib" },
@@ -939,6 +939,7 @@ dependencies = [
     { name = "rasterio" },
     { name = "scikit-learn" },
     { name = "scipy" },
+    { name = "shapely" },
 ]
 
 [package.metadata]
@@ -950,6 +951,7 @@ requires-dist = [
     { name = "rasterio", specifier = ">=1.5.0" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "scipy", specifier = ">=1.17.1" },
+    { name = "shapely", specifier = ">=2.0" },
 ]
 
 [[package]]

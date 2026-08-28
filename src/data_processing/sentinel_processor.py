@@ -50,6 +50,14 @@ class SentinelProcessor:
 
         shutil.copytree(img_path, target, dirs_exist_ok=True)
 
+        # The product manifest carries BOA_ADD_OFFSET and the quantification
+        # value, without which digital numbers cannot be turned into
+        # reflectance. Copy it alongside the bands so the processed tree is
+        # self-sufficient and data/raw can be deleted to reclaim space.
+        manifest = Path(self.raw_path / safe_file / 'MTD_MSIL2A.xml')
+        if manifest.exists():
+            shutil.copy2(manifest, Path(target) / manifest.name)
+
     def process_all(self):
         safe_files = self._find_safe_files()
         for safe_file in safe_files:
