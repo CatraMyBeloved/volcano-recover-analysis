@@ -12,7 +12,7 @@ class Visualizer:
     def __init__(self):
         self.data = None
         self.colormaps = {
-            'nvdi': 'RdYlGn',
+            'ndvi': 'RdYlGn',
             'savi': 'RdYlGn',
             'nbr': 'RdYlBu',
             'default': 'viridis',
@@ -45,18 +45,28 @@ class Visualizer:
             with rasterio.open(file_path) as src:
                 return src.read(band)
 
-        else:
-            print('Data has to be Path, file_path string or numpy array!')
+        raise TypeError(
+            f'Data must be a Path, a path string or a numpy array, '
+            f'got {type(data).__name__}'
+        )
 
     def simple_plot(self, data: str | Path | np.ndarray, band: int = 1,
                     title: str = None, index: str = 'default',
                     discrete: bool = False) -> plt.Figure:
+        data = self._read_data(data, band)
+        # Composites carry NaN where nothing was measurable; draw those as grey
+        # rather than letting them read as a value.
+        data = np.ma.masked_invalid(data)
+
         fig, ax = plt.subplots(**self.default_style)
         if discrete:
-            im = ax.imshow(data, cmap=ListedColormap(self.discrete_colors),
-                           norm=self.discrete_norm)
+            palette = ListedColormap(self.discrete_colors)
+            palette.set_bad('#d9d9d9')
+            im = ax.imshow(data, cmap=palette, norm=self.discrete_norm)
         else:
-            im = ax.imshow(data, cmap=self.colormaps[index], vmin=-1, vmax=1)
+            palette = plt.get_cmap(self.colormaps[index]).copy()
+            palette.set_bad('#d9d9d9')
+            im = ax.imshow(data, cmap=palette, vmin=-1, vmax=1)
 
         plt.colorbar(im, ax=ax)
 
@@ -73,19 +83,23 @@ class Visualizer:
                       index: str = 'default',
                       discrete: bool = False) \
             -> plt.Figure:
-        data1 = self._read_data(data1, band)
-        data2 = self._read_data(data2, band)
+        data1 = np.ma.masked_invalid(self._read_data(data1, band))
+        data2 = np.ma.masked_invalid(self._read_data(data2, band))
 
         fig, (ax1, ax2) = plt.subplots(1, 2, **self.comp_style)
 
         if discrete:
-            im1 = ax1.imshow(data1, cmap=ListedColormap(self.discrete_colors),
-                             norm=self.discrete_norm)
-            im2 = ax2.imshow(data2, cmap=ListedColormap(self.discrete_colors),
-                             norm=self.discrete_norm)
+            palette = ListedColormap(self.discrete_colors)
         else:
-            im1 = ax1.imshow(data1, cmap=self.colormaps[index], vmin=-1, vmax=1)
-            im2 = ax2.imshow(data2, cmap=self.colormaps[index], vmin=-1, vmax=1)
+            palette = plt.get_cmap(self.colormaps[index]).copy()
+        palette.set_bad('#d9d9d9')
+
+        if discrete:
+            im1 = ax1.imshow(data1, cmap=palette, norm=self.discrete_norm)
+            im2 = ax2.imshow(data2, cmap=palette, norm=self.discrete_norm)
+        else:
+            im1 = ax1.imshow(data1, cmap=palette, vmin=-1, vmax=1)
+            im2 = ax2.imshow(data2, cmap=palette, vmin=-1, vmax=1)
 
         plt.colorbar(im1, ax=ax1)
         plt.colorbar(im2, ax=ax2)

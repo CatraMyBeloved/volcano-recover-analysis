@@ -21,11 +21,17 @@ La Palma, Canary Islands (Sentinel-2 tile T28RBS). The 2021 Cumbre Vieja eruptio
 
 **Index calculation.** `RasterCalculator` converts surface reflectance bands to spectral indices. Named pixel windows (`lapalma`, `lavaflow_lapalma`) restrict computation to the study region.
 
-**Timeseries construction.** `Timeseries` stacks index grids across all acquisition dates into a pixel-by-time matrix. Large negative inter-date differences (threshold -0.2), indicative of residual cloud or shadow contamination, are replaced by linear interpolation between neighbors.
+**Reflectance conversion.** Digital numbers become reflectance as `(DN + BOA_ADD_OFFSET) / BOA_QUANTIFICATION_VALUE`, read per product from its own manifest. From processing baseline 04.00 the offset is -1000, and ignoring it compresses every normalised index toward zero by a factor that depends on surface brightness, hitting dark surfaces such as fresh lava hardest.
 
-**Clustering.** K-means (k = 5) partitions pixels by their full temporal trajectory, producing a raster where each cluster label represents a distinct recovery pattern.
+**Cloud masking.** The product scene classification layer (`SCL`) marks cloud, cirrus, cloud shadow, snow, saturation and nodata per pixel and per date; those pixels become NaN. They are never interpolated: an interpolated value cannot be told apart from a measurement downstream, and any threshold on index change cannot tell contamination from a real event, so on this dataset the previous heuristic interpolated across the eruption itself.
 
-**Trend estimation.** First-order polynomial fitting yields a per-pixel slope raster quantifying the rate and direction of vegetation change over the analysis period.
+**Compositing.** `Compositor` takes a per-pixel median over the clear observations in a period. Cloud on a single date is common here but moves between dates, so nearly every pixel has several clear looks across a season even when no single scene is clear. Every composite ships a count raster recording how many observations stand behind each pixel.
+
+**Timeseries construction.** `Timeseries` stacks masked index grids across acquisition dates into a pixel-by-time matrix, with unmeasurable pixels left as NaN.
+
+**Clustering.** `Compositor.cluster_periods` partitions pixels by their per-period composite values, labelling clusters in ascending order of the first period so a label means the same thing between runs. Clustering the raw date-by-date trajectory does not work on a dataset of a few seasonal windows: the dates arrive in near-simultaneous clumps separated by years, and no pixel is clear on every date, so K-means has nothing complete to work with.
+
+**Trend estimation.** A per-pixel least-squares line against decimal years, solved over each pixel's own clear observations, yields a slope raster in index units per year. Fitting against position in the date list would treat a three-year gap as one step.
 
 ## Setup
 
@@ -67,7 +73,9 @@ The full La Palma dataset (pre-eruption baseline + eruption + first recovery yea
 uv run scripts/download_dataset.py
 ```
 
-Expect roughly 25 to 40 GB of storage for a complete La Palma dataset (~50 acquisitions at 500 MB to 1 GB each).
+Expect roughly 500 MB to 1 GB per acquisition, so about 13 GB of archives for the 20-scene focused set and a similar amount again once extracted.
+
+Only orbit R023 images La Palma within tile T28RBS; R123 scenes clip a corner of the tile well away from the island and cover under a tenth of it while still being large, valid and low-cloud products. `SentinelDownloader` filters on the footprint the catalogue returns, before ranking by cloud, because cloud cover is assessed over valid pixels and so a scene that barely touches the island reports near-zero cloud and wins any ranking by clearness.
 
 ## Usage
 
@@ -96,7 +104,7 @@ uv run main.py --clusters 0 --slopes
 | `--bounds` | `lapalma` | Named pixel window (`lapalma`, `lavaflow_lapalma`) |
 | `--index` | `savi` | Spectral index: `ndvi`, `savi`, or `ndwi` |
 | `--start`, `--end` | none | Inclusive date filters `YYYY-MM-DD` |
-| `--clusters` | `5` | K-means cluster count, `0` to skip |
+| `--clusters` | `5` | K-means cluster count, `0` to skip. Requires a pixel to be clear on every date, which a set of seasonal windows will not satisfy; use `scripts/build_composites.py --clusters 5` instead |
 | `--slopes` | off | Also save per-pixel slope raster |
 | `--list` | off | List discovered dates and exit |
 
@@ -104,9 +112,29 @@ uv run main.py --clusters 0 --slopes
 
 ```
 src/
-  data_processing/    SentinelDownloader, SentinelProcessor, RasterCalculator, Timeseries, DEMProcessor
-  helper/             RasterData dataclass, date lookup tables
+  __init__.py         repairs the PROJ search path before rasterio loads
+  data_processing/    SentinelDownloader, SentinelProcessor, RasterCalculator,
+                      Compositor, Timeseries, DEMProcessor
+  helper/             RasterData dataclass, reflectance scaling and tile CRS,
+                      date lookup tables
   visualization/      Visualizer (matplotlib), 3D terrain rendering (PyVista)
 scripts/              standalone diagnostic and analysis scripts
 docs/research/        scientific background and eruption case study notes
 ```
+
+Scripts, in the order they are usually run:
+
+| Script | Purpose |
+|--------|---------|
+| `survey_windows.py` | list candidate scenes per period with cloud and island coverage, downloading nothing |
+| `download_dataset.py` | fetch the clearest covering scenes per period, extract and process them |
+| `verify_coverage.py` | read the pixels and report valid, usable and clear-observation depth per scene |
+| `build_composites.py` | per-period median composites, count rasters, clusters and a provenance record |
+| `plot_diagnostics.py` | inspection figures for composites, change maps, clusters and distributions |
+
+`src/__init__.py` exists because a system-wide `PROJ_LIB`, typically left by a
+PostgreSQL or PostGIS install, points PROJ at that installation's `proj.db`.
+GDAL honours it over rasterio's bundled copy, and if the two are different major
+versions every EPSG lookup fails and rasters are written with no projection. The
+override has to happen before rasterio is first imported, because PROJ resolves
+its search path once at GDAL initialisation.

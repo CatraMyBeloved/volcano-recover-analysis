@@ -59,12 +59,19 @@ class RasterData:
         if self.meta is not None:
             self.meta['driver'] = 'GTiff'
             self.meta['dtype'] = 'float32'
-    def save(self, path: str | Path):
-        """Saves the raster data to a file using the stored metadata"""
-        results_folder = Path('results')
-        print(f'Trying to save to {path}')
+
+    def save(self, path: str | Path) -> Path:
+        """Save the raster using the stored metadata; return where it landed.
+
+        Raises on failure. This previously caught every exception and printed,
+        so a raster that never reached disk, or reached it stripped of its
+        projection, still read as a successful run to everything downstream.
+        """
+        destination = Path('results') / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with rasterio.open(results_folder / path, 'w', **self.meta) as dst:
+            with rasterio.open(destination, 'w', **self.meta) as dst:
                 dst.write(self.data, 1)
-        except Exception as e:
-            print(f'Failed to save to {path}: {e}')
+        except Exception as exc:
+            raise RuntimeError(f'Failed to save raster to {destination}: {exc}') from exc
+        return destination
